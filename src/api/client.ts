@@ -13,9 +13,8 @@ export interface RequestConfig<TBody = unknown> {
 }
 
 // Prefer Vite dev proxy at /api in development to avoid CORS; use env base URL otherwise
-const baseUrl: string = (import.meta as any).env?.DEV ? 
-    "/api" : 
-    ((import.meta as any).env?.VITE_API_BASE_URL || "/api");
+const baseUrl: string = (import.meta as any).env?.VITE_API_BASE_URL || 
+    ((import.meta as any).env?.DEV ? "/api" : "/api");
 
 const api = axios.create({
 	baseURL: baseUrl,

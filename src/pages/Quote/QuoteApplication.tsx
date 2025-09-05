@@ -18,6 +18,113 @@ const QuoteApplication = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
   const [showFinalOptions, setShowFinalOptions] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [canSendMessage, setCanSendMessage] = useState(true);
+
+  // Validation functions
+  const validateEmail = (email: string): string | null => {
+    if (!email || typeof email !== 'string') return 'Email is required';
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return 'Invalid email format';
+    
+    // Check for period immediately before @
+    if (email.includes('.@')) return 'Email cannot have a period immediately before the @-sign';
+    
+    // Check for period immediately after @
+    if (email.includes('@.')) return 'Email cannot have a period immediately after the @-sign';
+    
+    // Check for consecutive periods
+    if (email.includes('..')) return 'Email cannot contain consecutive periods';
+    
+    // Check if starts with period
+    if (email.startsWith('.')) return 'Email cannot start with a period';
+    
+    return null;
+  };
+
+  const validateName = (name: string, fieldName: string): string | null => {
+    if (!name || typeof name !== 'string') return `${fieldName} is required`;
+    
+    // Remove invalid characters like backslashes
+    const invalidChars = /[\\\/\<\>\{\}\[\]]/;
+    if (invalidChars.test(name)) {
+      return `${fieldName} contains invalid characters (\\, /, <, >, {, }, [, ])`;
+    }
+    
+    const trimmed = name.trim();
+    if (trimmed.length === 0) return `${fieldName} cannot be empty`;
+    if (trimmed.length < 2) return `${fieldName} must be at least 2 characters`;
+    
+    return null;
+  };
+
+  const validatePhoneNumber = (phone: string): string | null => {
+    if (!phone || typeof phone !== 'string') return 'Phone number is required';
+    
+    // Remove all non-digit characters for validation
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    if (digitsOnly.length < 10) return 'Phone number must have at least 10 digits';
+    if (digitsOnly.length > 15) return 'Phone number is too long';
+    
+    return null;
+  };
+
+  const validateUserData = (): string[] => {
+    const errors: string[] = [];
+    
+    // Validate email
+    const emailError = validateEmail(userData.email);
+    if (emailError) errors.push(emailError);
+    
+    // Validate full name
+    const fullName = userData.full_name || userData.name || '';
+    const nameError = validateName(fullName, 'Full name');
+    if (nameError) errors.push(nameError);
+    
+    // If we have separate first/last names, validate those too
+    const [firstName, ...rest] = (fullName || '').trim().split(/\s+/);
+    const lastName = rest.join(' ') || firstName || '';
+    
+    const firstNameError = validateName(firstName, 'First name');
+    if (firstNameError) errors.push(firstNameError);
+    
+    if (lastName && lastName !== firstName) {
+      const lastNameError = validateName(lastName, 'Last name');
+      if (lastNameError) errors.push(lastNameError);
+    }
+    
+    // Validate phone number
+    const phoneError = validatePhoneNumber(userData.phone_number);
+    if (phoneError) errors.push(phoneError);
+    
+    return errors;
+  };
+
+  const sanitizeUserData = () => {
+    const sanitized = { ...userData };
+    
+    // Clean email
+    if (sanitized.email) {
+      sanitized.email = String(sanitized.email).trim().toLowerCase();
+    }
+    
+    // Clean names - remove invalid characters
+    if (sanitized.full_name) {
+      sanitized.full_name = String(sanitized.full_name)
+        .replace(/[\\\/\<\>\{\}\[\]]/g, '')
+        .trim();
+    }
+    
+    // Clean phone number
+    if (sanitized.phone_number) {
+      const cleaned = String(sanitized.phone_number).replace(/\D/g, '');
+      sanitized.phone_number = cleaned.startsWith('1') ? `+${cleaned}` : `+1${cleaned}`;
+    }
+    
+    return sanitized;
+  };
 
   const addAssistantMessage = (content: string, step?: any, extra?: any) => {
     setMessages(prev => [
@@ -28,6 +135,11 @@ const QuoteApplication = () => {
 
   const addUserMessage = (content: string) => {
     setMessages(prev => [...prev, { id: Date.now().toString(), type: 'user', content }]);
+  };
+
+  const addErrorMessage = (errors: string[]) => {
+    const errorMessage = `I found some issues that need to be fixed:\n\n${errors.map(err => `• ${err}`).join('\n')}\n\nPlease correct these and try again.`;
+    addAssistantMessage(errorMessage);
   };
 
   const getFriendlyName = () => {
@@ -52,18 +164,36 @@ const QuoteApplication = () => {
       setShowTyping(false);
 
       if (step.type === 'loading' || step.id === 'generate_quote') {
+        // Validate user data before making API calls
+        const errors = validateUserData();
+        if (errors.length > 0) {
+          setValidationErrors(errors);
+          setCanSendMessage(false);
+          addErrorMessage(errors);
+          setAwaitingUser(true);
+          setIsProcessing(false);
+          return;
+        }
+
+        // Clear any previous errors
+        setValidationErrors([]);
+        setCanSendMessage(true);
+
         // Call backend APIs to register user, create property, and create quote
         (async () => {
           try {
+            const sanitizedData = sanitizeUserData();
+            
             // 1) Register or upsert user
-            const fullName: string = userData.full_name || '';
+            const fullName: string = sanitizedData.full_name || '';
             const [firstName, ...rest] = (fullName || '').trim().split(/\s+/);
             const lastName = rest.join(' ') || firstName || 'User';
+            
             const userRes = await registerUser({
-              email: String(userData.email || '').trim(),
+              email: sanitizedData.email,
               first_name: firstName || 'User',
               last_name: lastName || 'User',
-              phone_number: String(userData.phone_number || '').trim() || '+10000000000',
+              phone_number: sanitizedData.phone_number || '+10000000000',
             });
 
             const userId = userRes.user_id;
@@ -120,28 +250,28 @@ const QuoteApplication = () => {
             const mapGarage = (v: string | undefined) => (v && v !== 'none' ? true : false);
             const mapPool = (v: string | undefined) => (v && v !== 'none' ? true : false);
 
-            const storiesStr = String(userData.stories || '1');
+            const storiesStr = String(sanitizedData.stories || '1');
             const stories = parseInt(storiesStr === '3' ? '3' : storiesStr, 10) || 1;
 
             // 2) Create property
             const propertyPayload: PropertyCreateRequestSchema = {
               user_id: userId,
-              street_address: String(userData.street_address || '').trim(),
-              city: String(userData.city || '').trim(),
-              state: String(userData.state || '').trim(),
-              zip_code: String(userData.zip_code || '').trim(),
-              construction_year: parseInt(String(userData.construction_year || new Date().getFullYear()), 10),
-              home_value: parseInt(String(userData.home_value || '300000'), 10),
-              square_footage: parseInt(String(userData.square_footage || '1500'), 10),
-              property_type: mapPropertyType(userData.property_type) as any,
-              construction_material: mapConstructionMaterial(userData.construction_material) as any,
-              roof_type: (userData.roof_type || 'composition_shingle') as any,
-              foundation_type: mapFoundation(userData.foundation_type) as any,
+              street_address: String(sanitizedData.street_address || '').trim(),
+              city: String(sanitizedData.city || '').trim(),
+              state: String(sanitizedData.state || '').trim(),
+              zip_code: String(sanitizedData.zip_code || '').trim(),
+              construction_year: parseInt(String(sanitizedData.construction_year || new Date().getFullYear()), 10),
+              home_value: parseInt(String(sanitizedData.home_value || '300000'), 10),
+              square_footage: parseInt(String(sanitizedData.square_footage || '1500'), 10),
+              property_type: mapPropertyType(sanitizedData.property_type) as any,
+              construction_material: mapConstructionMaterial(sanitizedData.construction_material) as any,
+              roof_type: (sanitizedData.roof_type || 'composition_shingle') as any,
+              foundation_type: mapFoundation(sanitizedData.foundation_type) as any,
               stories: stories,
-              bedrooms: userData.bedrooms ? parseInt(String(userData.bedrooms), 10) : null,
-              bathrooms: userData.bathrooms ? parseInt(String(userData.bathrooms), 10) : null,
-              garage: mapGarage(userData.garage),
-              pool: mapPool(userData.pool),
+              bedrooms: sanitizedData.bedrooms ? parseInt(String(sanitizedData.bedrooms), 10) : null,
+              bathrooms: sanitizedData.bathrooms ? parseInt(String(sanitizedData.bathrooms), 10) : null,
+              garage: mapGarage(sanitizedData.garage),
+              pool: mapPool(sanitizedData.pool),
             };
 
             const propertyRes = await createProperty(propertyPayload);
@@ -149,7 +279,7 @@ const QuoteApplication = () => {
             // 3) Create quote
             const homeValueNum = propertyPayload.home_value;
             const dwellingLimit = Math.min(Math.round(homeValueNum * 1.2), homeValueNum + 100000);
-            const deductible = parseInt(String(userData.deductible || '1000'), 10);
+            const deductible = parseInt(String(sanitizedData.deductible || '1000'), 10);
 
             const quotePayload: QuoteCreateRequestSchema = {
               property_id: propertyRes.property.property_id,
@@ -173,7 +303,18 @@ const QuoteApplication = () => {
             addAssistantMessage('quote_result', step, { quote: normalizedQuote });
           } catch (e) {
             console.error('Failed to create quote via API:', e);
-            addAssistantMessage('Sorry, I could not generate a quote right now. Please try again.');
+            let errorMessage = 'Sorry, I could not generate a quote right now. Please try again.';
+            
+            // Handle specific API errors
+            if (e instanceof Error) {
+              if (e.message.includes('email')) {
+                errorMessage = 'There was an issue with the email address. Please check it and try again.';
+              } else if (e.message.includes('name')) {
+                errorMessage = 'There was an issue with the name fields. Please check for invalid characters.';
+              }
+            }
+            
+            addAssistantMessage(errorMessage);
           }
 
           // After showing the loading and quote message, open final options in chat
@@ -192,11 +333,43 @@ const QuoteApplication = () => {
   };
 
   const handleUserResponse = (value: any, step: any) => {
-    if (isProcessing) return;
+    if (isProcessing || !canSendMessage) return;
 
     const isSelection = value && typeof value === 'object' && 'text' in value && 'value' in value;
     const messageContent = isSelection ? value.text : (typeof value === 'string' ? value : value.text || value);
     addUserMessage(messageContent);
+
+    // Real-time validation for specific fields
+    if (step?.field) {
+      const storedValue = isSelection ? value.value : messageContent;
+      
+      // Validate email field in real-time
+      if (step.field === 'email') {
+        const emailError = validateEmail(storedValue);
+        if (emailError) {
+          addAssistantMessage(`I notice there's an issue with that email: ${emailError}. Please provide a valid email address.`);
+          return;
+        }
+      }
+      
+      // Validate name fields in real-time
+      if (['full_name', 'name'].includes(step.field)) {
+        const nameError = validateName(storedValue, 'Name');
+        if (nameError) {
+          addAssistantMessage(`I notice there's an issue with that name: ${nameError}. Please provide a valid name.`);
+          return;
+        }
+      }
+      
+      // Validate phone number in real-time
+      if (step.field === 'phone_number') {
+        const phoneError = validatePhoneNumber(storedValue);
+        if (phoneError) {
+          addAssistantMessage(`I notice there's an issue with that phone number: ${phoneError}. Please provide a valid phone number.`);
+          return;
+        }
+      }
+    }
 
     // Update user data if step has a field
     if (step?.field) {
@@ -279,6 +452,8 @@ const QuoteApplication = () => {
         progressTexts={progressTexts}
         conversationFlow={conversationFlow}
         showFinalOptions={showFinalOptions}
+        canSendMessage={canSendMessage}
+        validationErrors={validationErrors}
       />
     </MainLayout>
   );
