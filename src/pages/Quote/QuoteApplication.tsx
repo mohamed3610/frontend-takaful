@@ -22,7 +22,6 @@ const QuoteApplication = () => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [canSendMessage, setCanSendMessage] = useState(true);
   const [stepHistory, setStepHistory] = useState<number[]>([]);
-  // Add a counter for unique message IDs
   const [messageIdCounter, setMessageIdCounter] = useState(0);
 
   // Debug logging for development
@@ -34,22 +33,21 @@ const QuoteApplication = () => {
     }
   }, [userData, conversationStep]);
 
-  // Fixed message functions with unique IDs
-// Fixed message functions with better unique ID generation
-const addAssistantMessage = (content: string, step?: any, extra?: any) => {
-  const messageId = `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  setMessages(prev => [
-    ...prev,
-    { id: messageId, type: 'assistant', content, step, ...(extra || {}) }
-  ]);
-};
+  // Fixed message functions with better unique ID generation
+  const addAssistantMessage = (content: string, step?: any, extra?: any) => {
+    const messageId = `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    setMessages(prev => [
+      ...prev,
+      { id: messageId, type: 'assistant', content, step, ...(extra || {}) }
+    ]);
+  };
 
-const addUserMessage = (content: string) => {
-  const messageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  setMessages(prev => [...prev, { id: messageId, type: 'user', content }]);
-};
+  const addUserMessage = (content: string) => {
+    const messageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    setMessages(prev => [...prev, { id: messageId, type: 'user', content }]);
+  };
 
   const addErrorMessage = (errors: string[]) => {
     const errorMessage = `I found some issues that need to be fixed:\n\n${errors.map(err => `• ${err}`).join('\n')}\n\nPlease correct these and try again.`;
@@ -123,7 +121,7 @@ const addUserMessage = (content: string) => {
     return existingEmails.includes(email.toLowerCase());
   };
 
-  // Mock validation functions (you'll need to implement these based on your requirements)
+  // Mock validation functions
   const validateEmail = (email: string): string | null => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) return 'Email is required';
@@ -167,212 +165,210 @@ const addUserMessage = (content: string) => {
     };
   };
 
+  // Fixed handleEmailVerification function
+  const handleEmailVerification = async () => {
+    try {
+      console.log("=== EMAIL VERIFICATION START ===");
+      console.log("Checking email:", userData.email);
 
-// Fixed handleEmailVerification function
-const handleEmailVerification = async () => {
-  try {
-    console.log("=== EMAIL VERIFICATION START ===");
-    console.log("Checking email:", userData.email);
+      // Show verification in progress message
+      addAssistantMessage("🔍 Checking if this email exists in our system...");
 
-    // Show verification in progress message
-    addAssistantMessage("🔍 Checking if this email exists in our system...");
+      const emailExists = await verifyEmailExists(userData.email);
+      console.log("Email exists result:", emailExists);
 
-    const emailExists = await verifyEmailExists(userData.email);
-    console.log("Email exists result:", emailExists);
+      // Clear typing and processing states first
+      setShowTyping(false);
+      setIsProcessing(false);
 
-    // Clear typing and processing states first
-    setShowTyping(false);
-    setIsProcessing(false);
+      if (emailExists) {
+        // ✅ Email found - navigate to OTP step
+        setUserData((prev) => ({
+          ...prev,
+          email_verified: true,
+          email_not_found: false,
+          user_type: 'existing_customer' // CRITICAL: Set user type
+        }));
 
-    if (emailExists) {
-      // ✅ Email found - navigate to OTP step
-      setUserData((prev) => ({
-        ...prev,
-        email_verified: true,
-        email_not_found: false,
-      }));
+        // Add success message
+        addAssistantMessage("✅ Great! I found your account. Let me send you a verification code.");
 
-      // Add success message
-      addAssistantMessage("✅ Great! I found your account. Let me send you a verification code.");
-
-      // Navigate to OTP step after a short delay
-      setTimeout(() => {
-        const otpStepIndex = conversationFlow.findIndex(
-          (step) => step.id === "send_otp"
-        );
-        if (otpStepIndex !== -1) {
-          console.log("Navigating to OTP step:", otpStepIndex);
-          setConversationStep(otpStepIndex);
-          // Force processNextStep to run for OTP step
-          setTimeout(() => {
-            setIsProcessing(false);
-            setAwaitingUser(false);
-          }, 100);
-        }
-      }, 1000);
-
-    } else {
-      // ❌ Email not found
-      setUserData((prev) => ({
-        ...prev,
-        email_verified: false,
-        email_not_found: true,
-      }));
-
-      const emailNotFoundStepIndex = conversationFlow.findIndex(
-        (step) => step.id === "email_not_found"
-      );
-
-      if (emailNotFoundStepIndex !== -1) {
-        const step = conversationFlow[emailNotFoundStepIndex];
-
-        const messageText =
-          typeof step.message === "function"
-            ? step.message(getFriendlyName())
-            : step.message;
-
-        // Add both message and options in a single call
+        // Navigate to OTP step after a short delay
         setTimeout(() => {
-          if (messageText) {
-            // Pass the step with options so ChatInterface can render both message and options together
-            addAssistantMessage(messageText, step);
+          const otpStepIndex = conversationFlow.findIndex(
+            (step) => step.id === "send_otp"
+          );
+          if (otpStepIndex !== -1) {
+            console.log("Navigating to OTP step:", otpStepIndex);
+            setConversationStep(otpStepIndex);
+            setTimeout(() => {
+              setIsProcessing(false);
+              setAwaitingUser(false);
+            }, 100);
           }
-          
-          setConversationStep(emailNotFoundStepIndex);
+        }, 1000);
+
+      } else {
+        // ❌ Email not found
+        setUserData((prev) => ({
+          ...prev,
+          email_verified: false,
+          email_not_found: true,
+        }));
+
+        const emailNotFoundStepIndex = conversationFlow.findIndex(
+          (step) => step.id === "email_not_found"
+        );
+
+        if (emailNotFoundStepIndex !== -1) {
+          const step = conversationFlow[emailNotFoundStepIndex];
+
+          const messageText =
+            typeof step.message === "function"
+              ? step.message(getFriendlyName())
+              : step.message;
+
+          setTimeout(() => {
+            if (messageText) {
+              addAssistantMessage(messageText, step);
+            }
+            
+            setConversationStep(emailNotFoundStepIndex);
+            setAwaitingUser(true);
+            setIsProcessing(false);
+            setShowTyping(false);
+          }, 800);
+
+        } else {
+          addAssistantMessage(
+            "❌ I couldn't find an account with that email address. Please try a different email or continue as a new customer."
+          );
+          setIsProcessing(false);
+          setAwaitingUser(true);
+        }
+      }
+    } catch (error) {
+      console.error("Email verification failed:", error);
+      addAssistantMessage(
+        "⚠️ Sorry, I couldn't verify the email right now due to a technical issue.\n\n" +
+          "Please try again in a moment, or contact our support team if the problem persists."
+      );
+      setIsProcessing(false);
+      setShowTyping(false);
+      setAwaitingUser(true);
+    }
+  };
+
+  // FIXED: Enhanced processNextStep function with better user type handling
+  const processNextStep = () => {
+    if (awaitingUser) {
+      console.log("Already awaiting user input, skipping processNextStep");
+      return;
+    }
+
+    if (isProcessing) {
+      console.log("Already processing, skipping processNextStep");
+      return;
+    }
+
+    updateStepHistory(conversationStep);
+
+    let nextStepIndex = conversationStep;
+    let step;
+
+    console.log("=== PROCESSING NEXT STEP ===");
+    console.log("Current step index:", nextStepIndex);
+    console.log("Current userData:", userData);
+    console.log("User type:", userData.user_type);
+
+    step = conversationFlow[nextStepIndex];
+
+    // Special handling for send_otp step - bypass condition check
+    if (step && step.id === "send_otp") {
+      console.log("Direct navigation to send_otp step, bypassing condition check");
+    } else {
+      // Normal condition checking for other steps
+      do {
+        step = conversationFlow[nextStepIndex];
+        if (!step) {
+          console.log("No more steps found");
+          return;
+        }
+
+        console.log("Checking step:", step.id, "condition:", !!step.condition);
+
+        // CRITICAL FIX: Pass updated userData including user_type to condition check
+        const currentUserData = { ...userData };
+        
+        if (step.condition && !step.condition(currentUserData)) {
+          console.log("Step condition failed for:", step.id, "with userData:", currentUserData);
+          nextStepIndex++;
+          continue;
+        }
+
+        console.log("Step condition passed for:", step.id);
+        break;
+      } while (nextStepIndex < conversationFlow.length);
+    }
+
+    if (!step) {
+      console.log("No valid step found");
+      return;
+    }
+
+    console.log("Processing step:", step.id, "type:", step.type);
+    setIsProcessing(true);
+    setShowTyping(true);
+    setAwaitingUser(false);
+
+    const messageText =
+      typeof step.message === "function" ? step.message(getFriendlyName()) : step.message;
+
+    setTimeout(() => {
+      setShowTyping(false);
+
+      // Handle different step types
+      if (step.type === "options" && step.options?.length > 0) {
+        // FIXED: For options steps, show message and options together
+        console.log("Options step detected:", step.id);
+        if (messageText) {
+          addAssistantMessage(messageText, step);
+        }
+        setAwaitingUser(true);
+        setIsProcessing(false);
+        return;
+
+      } else if (step.type === "loading") {
+        // Handle loading steps
+        if (step.id === "generate_quote") {
+          if (messageText) addAssistantMessage(messageText, step);
+          handleQuoteGeneration(step);
+        } else if (step.id === "email_verification_check") {
+          console.log("Starting email verification step");
+          if (messageText) addAssistantMessage(messageText, step);
+          handleEmailVerification();
+        } else {
+          console.log("Other loading step:", step.id);
+          if (messageText) addAssistantMessage(messageText, step);
           setAwaitingUser(true);
           setIsProcessing(false);
-          setShowTyping(false);
-        }, 800);
+        }
+
+      } else if (step.id === "send_otp") {
+        // Special handling for OTP step
+        console.log("Starting OTP step");
+        if (messageText) addAssistantMessage(messageText, step);
+        handleOTPSending();
 
       } else {
-        // fallback if step not found
-        addAssistantMessage(
-          "❌ I couldn't find an account with that email address. Please try a different email or continue as a new customer."
-        );
-        setIsProcessing(false);
-        setAwaitingUser(true);
-      }
-    }
-  } catch (error) {
-    console.error("Email verification failed:", error);
-    addAssistantMessage(
-      "⚠️ Sorry, I couldn't verify the email right now due to a technical issue.\n\n" +
-        "Please try again in a moment, or contact our support team if the problem persists."
-    );
-    setIsProcessing(false);
-    setShowTyping(false);
-    setAwaitingUser(true);
-  }
-};
-
-// Fixed processNextStep function
-const processNextStep = () => {
-  if (awaitingUser) {
-    console.log("Already awaiting user input, skipping processNextStep");
-    return;
-  }
-
-  if (isProcessing) {
-    console.log("Already processing, skipping processNextStep");
-    return;
-  }
-
-  updateStepHistory(conversationStep);
-
-  let nextStepIndex = conversationStep;
-  let step;
-
-  console.log("=== PROCESSING NEXT STEP ===");
-  console.log("Current step index:", nextStepIndex);
-  console.log("Current userData:", userData);
-
-  step = conversationFlow[nextStepIndex];
-
-  // Special handling for send_otp step - bypass condition check
-  if (step && step.id === "send_otp") {
-    console.log("Direct navigation to send_otp step, bypassing condition check");
-  } else {
-    // Normal condition checking for other steps
-    do {
-      step = conversationFlow[nextStepIndex];
-      if (!step) {
-        console.log("No more steps found");
-        return;
-      }
-
-      console.log("Checking step:", step.id, "condition:", !!step.condition);
-
-      if (step.condition && !step.condition(userData)) {
-        console.log("Step condition failed for:", step.id);
-        nextStepIndex++;
-        continue;
-      }
-
-      console.log("Step condition passed for:", step.id);
-      break;
-    } while (nextStepIndex < conversationFlow.length);
-  }
-
-  if (!step) {
-    console.log("No valid step found");
-    return;
-  }
-
-  console.log("Processing step:", step.id, "type:", step.type);
-  setIsProcessing(true);
-  setShowTyping(true);
-  setAwaitingUser(false);
-
-  const messageText =
-    typeof step.message === "function" ? step.message(getFriendlyName()) : step.message;
-
-  setTimeout(() => {
-    setShowTyping(false);
-
-    // Handle different step types
-    if (step.type === "options" && step.options?.length > 0) {
-      // For options steps, show message and wait for user selection
-      if (messageText) {
-        addAssistantMessage(messageText, step);
-      }
-      setAwaitingUser(true);
-      setIsProcessing(false);
-      return;
-
-    } else if (step.type === "loading") {
-      // Handle loading steps
-      if (step.id === "generate_quote") {
-        if (messageText) addAssistantMessage(messageText, step);
-        handleQuoteGeneration(step);
-      } else if (step.id === "email_verification_check") {
-        console.log("Starting email verification step");
-        if (messageText) addAssistantMessage(messageText, step);
-        handleEmailVerification();
-      } else {
-        console.log("Other loading step:", step.id);
+        // Regular input/text steps
+        console.log("Regular step, waiting for user:", step.id);
         if (messageText) addAssistantMessage(messageText, step);
         setAwaitingUser(true);
         setIsProcessing(false);
       }
-
-    } else if (step.id === "send_otp") {
-      // Special handling for OTP step
-      console.log("Starting OTP step");
-      if (messageText) addAssistantMessage(messageText, step);
-      handleOTPSending();
-
-    } else {
-      // Regular input/text steps
-      console.log("Regular step, waiting for user:", step.id);
-      if (messageText) addAssistantMessage(messageText, step);
-      setAwaitingUser(true);
-      setIsProcessing(false);
-    }
-  }, 800);
-};
-  
-
-
+    }, 800);
+  };
 
   const handleOTPSending = async () => {
     // Check if OTP step was already handled manually to prevent duplicates
@@ -407,7 +403,8 @@ const processNextStep = () => {
         const simulatedUserData = {
           full_name: 'Ahmed Hassan',
           phone_number: '+1234567890',
-          otp_verified: true
+          otp_verified: true,
+          user_type: 'existing_customer' // CRITICAL: Maintain user type
         };
         
         setUserData(prev => ({...prev, ...simulatedUserData}));
@@ -510,147 +507,371 @@ const processNextStep = () => {
     }, 500);
   };
 
+  const handleUserResponse = (value: any, step: any) => {
+    try {
+      if (isProcessing || !canSendMessage) return;
 
-const handleUserResponse = (value: any, step: any) => {
-  if (isProcessing || !canSendMessage) return;
+      const isSelection = value && typeof value === 'object' && 'text' in value && 'value' in value;
+      const messageContent = isSelection ? value.text : (typeof value === 'string' ? value : value.text || value);
+      addUserMessage(messageContent);
 
-  const isSelection = value && typeof value === 'object' && 'text' in value && 'value' in value;
-  const messageContent = isSelection ? value.text : (typeof value === 'string' ? value : value.text || value);
-  addUserMessage(messageContent);
+      // Handle special cases for existing customer welcome back options
+    if (step?.id === 'existing_welcome_back_manual' && isSelection) {
+      if (value.value === 'new_quote') {
+        addAssistantMessage("Great! Let's get a quote for your property. I'll need some details about your home.");
+        
+        setTimeout(() => {
+          // Find the first property-related step (usually street_address)
+          const propertyStepIndex = conversationFlow.findIndex(s => s.id === 'street_address');
+          if (propertyStepIndex !== -1) {
+            setConversationStep(propertyStepIndex);
+          } else {
+            // Fallback to continuing with next step
+            setConversationStep(prev => prev + 1);
+          }
+        }, 800);
+        return;
+        
+      } else if (value.value === 'review_policies') {
+        addAssistantMessage("I'd be happy to help you review your existing policies. This feature will be available soon. For now, please contact our support team at 1-800-TAKAFUL.");
+        setAwaitingUser(true);
+        setIsProcessing(false);
+        return;
+        
+      } else if (value.value === 'update_info') {
+        addAssistantMessage("Let's update your information. This feature will be available soon. For now, please contact our support team at 1-800-TAKAFUL.");
+        setAwaitingUser(true);
+        setIsProcessing(false);
+        return;
+        
+      } else if (value.value === 'exit') {
+        addAssistantMessage("Thank you for visiting Takaful! Have a blessed day. Assalamu alaikum! 🌟");
+        setAwaitingUser(false);
+        setIsProcessing(false);
+        return;
+      }
+    }
+      if (step?.id === 'email_not_found' && isSelection) {
+        if (value.value === 'retry_email') {
+          // Clear the email not found flag and go back to email input
+          setUserData(prev => ({ 
+            ...prev, 
+            email_not_found: false,
+            email: '' // Clear the previous email
+          }));
+          
+          addAssistantMessage("No problem! Let's try with a different email address.");
+          
+          setTimeout(() => {
+            const emailStepIndex = conversationFlow.findIndex(s => s.id === 'existing_login');
+            setConversationStep(emailStepIndex);
+          }, 800);
+          return;
+          
+        } else if (value.value === 'continue_as_new') {
+          // FIXED: Set user as new customer and continue
+          setUserData(prev => ({ 
+            ...prev, 
+            user_type: 'new_customer',
+            email_choice: 'continue_as_new',
+            email_not_found: false 
+          }));
+          
+          addAssistantMessage("Perfect! Let's get you set up as a new customer.");
+          
+          setTimeout(() => {
+            const newCustomerStepIndex = conversationFlow.findIndex(s => s.id === 'new_customer_welcome');
+            setConversationStep(newCustomerStepIndex);
+          }, 800);
+          return;
+          
+        } else if (value.value === 'contact_support') {
+          // Handle support contact
+          addAssistantMessage(
+            "I understand you'd like help finding your account. Here are your options:\n\n" +
+            "📞 **Call us:** 1-800-TAKAFUL (1-800-825-2385)\n" +
+            "💬 **Live Chat:** Available on our website 24/7\n" +
+            "📧 **Email:** support@takaful.com\n\n" +
+            "Our support team can help you:\n" +
+            "• Locate your existing account\n" +
+            "• Reset your login credentials\n" +
+            "• Update your contact information\n\n" +
+            "Would you like to continue with getting a new quote while you sort out your account?"
+          );
+          
+          // Stay on the same step to allow them to choose again
+          setAwaitingUser(true);
+          setIsProcessing(false);
+          return;
+        }
+      }
 
-  // Handle special cases for email_not_found step
-  if (step?.id === 'email_not_found' && isSelection) {
-    if (value.value === 'retry_email') {
-      // Clear the email not found flag and go back to email input
-      setUserData(prev => ({ 
-        ...prev, 
-        email_not_found: false,
-        email: '' // Clear the previous email
-      }));
-      
-      addAssistantMessage("No problem! Let's try with a different email address.");
-      
+      // Handle OTP verification (both from send_otp step AND manual email verification flow)
+      if (step?.id === 'send_otp' || (userData.email_verified && awaitingUser && /^\d{6}$/.test(messageContent.trim()))) {
+        const otpCode = isSelection ? value.value : messageContent;
+        if (!/^\d{6}$/.test(otpCode.trim())) {
+          addAssistantMessage("Please enter a valid 6-digit verification code.");
+          return;
+        }
+        verifyOTP(otpCode.trim());
+        return;
+      }
+
+      // Real-time validation for specific fields
+      if (step?.field) {
+        const storedValue = isSelection ? value.value : messageContent;
+        
+        if (step.field === 'email') {
+          const emailError = validateEmail(storedValue);
+          if (emailError) {
+            addAssistantMessage(`I notice there's an issue with that email: ${emailError}. Please provide a valid email address.`);
+            return;
+          }
+        }
+        
+        if (['full_name', 'name'].includes(step.field)) {
+          const nameError = validateName(storedValue, 'Name');
+          if (nameError) {
+            addAssistantMessage(`I notice there's an issue with that name: ${nameError}. Please provide a valid name.`);
+            return;
+          }
+        }
+        
+        if (step.field === 'phone_number') {
+          const phoneError = validatePhoneNumber(storedValue);
+          if (phoneError) {
+            addAssistantMessage(`I notice there's an issue with that phone number: ${phoneError}. Please provide a valid phone number.`);
+            return;
+          }
+        }
+      }
+
+      // FIXED: Update user data with proper user_type preservation
+      if (step?.field) {
+        const storedValue = isSelection ? value.value : messageContent;
+        setUserData((prev: any) => ({ 
+          ...prev, 
+          [step.field]: storedValue
+          // Note: Don't override user_type here unless it's specifically being set
+        }));
+      }
+
+      // Update step history before moving to next step
+      updateStepHistory(conversationStep);
+
+      // CRITICAL FIX: Reset awaitingUser state before moving to next step
+      setAwaitingUser(false);
+      setIsProcessing(false);
+
       setTimeout(() => {
-        const emailStepIndex = conversationFlow.findIndex(s => s.id === 'existing_login');
-        setConversationStep(emailStepIndex);
+        // Find next valid step index with updated userData
+        const updatedUserData = step?.field ? 
+          { ...userData, [step.field]: isSelection ? value.value : messageContent } : 
+          userData;
+
+        let nextStepIndex = conversationStep + 1;
+        while (nextStepIndex < conversationFlow.length) {
+          const nextStep = conversationFlow[nextStepIndex];
+          if (!nextStep.condition || nextStep.condition(updatedUserData)) {
+            break;
+          }
+          nextStepIndex++;
+        }
+        
+        setConversationStep(nextStepIndex);
       }, 800);
-      return;
       
-    } else if (value.value === 'continue_as_new') {
-      // Set user as new customer and continue
-      setUserData(prev => ({ 
-        ...prev, 
-        user_type: 'new_customer',
-        email_choice: 'continue_as_new',
-        email_not_found: false 
-      }));
-      
-      addAssistantMessage("Perfect! Let's get you set up as a new customer.");
-      
-      setTimeout(() => {
-        const newCustomerStepIndex = conversationFlow.findIndex(s => s.id === 'new_customer_welcome');
-        setConversationStep(newCustomerStepIndex);
-      }, 800);
-      return;
-      
-    } else if (value.value === 'contact_support') {
-      // Handle support contact
-      addAssistantMessage(
-        "I understand you'd like help finding your account. Here are your options:\n\n" +
-        "📞 **Call us:** 1-800-TAKAFUL (1-800-825-2385)\n" +
-        "💬 **Live Chat:** Available on our website 24/7\n" +
-        "📧 **Email:** support@takaful.com\n\n" +
-        "Our support team can help you:\n" +
-        "• Locate your existing account\n" +
-        "• Reset your login credentials\n" +
-        "• Update your contact information\n\n" +
-        "Would you like to continue with getting a new quote while you sort out your account?"
-      );
-      
-      // Stay on the same step to allow them to choose again
+    } catch (error) {
+      console.error('Error in handleUserResponse:', error);
+      addAssistantMessage("I encountered an error processing your response. Please try again.");
       setAwaitingUser(true);
       setIsProcessing(false);
-      return;
     }
-  }
+  };
 
-  // Handle OTP verification (both from send_otp step AND manual email verification flow)
-  if (step?.id === 'send_otp' || (userData.email_verified && awaitingUser && /^\d{6}$/.test(messageContent.trim()))) {
-    const otpCode = isSelection ? value.value : messageContent;
-    if (!/^\d{6}$/.test(otpCode.trim())) {
-      addAssistantMessage("Please enter a valid 6-digit verification code.");
-      return;
-    }
-    verifyOTP(otpCode.trim());
-    return;
-  }
+  // Enhanced quote generation with proper API integration
+  const handleQuoteGeneration = async (step: any) => {
+    try {
+      setIsProcessing(true);
+      setShowTyping(true);
+      
+      // Add initial loading message
+      addAssistantMessage("🔄 Generating your Shariah-compliant quote...");
 
-  // Real-time validation for specific fields
-  if (step?.field) {
-    const storedValue = isSelection ? value.value : messageContent;
-    
-    if (step.field === 'email') {
-      const emailError = validateEmail(storedValue);
-      if (emailError) {
-        addAssistantMessage(`I notice there's an issue with that email: ${emailError}. Please provide a valid email address.`);
+      // Validate user data first
+      const errors = validateUserData();
+      if (errors.length > 0) {
+        setShowTyping(false);
+        setIsProcessing(false);
+        addErrorMessage(errors);
         return;
       }
-    }
-    
-    if (['full_name', 'name'].includes(step.field)) {
-      const nameError = validateName(storedValue, 'Name');
-      if (nameError) {
-        addAssistantMessage(`I notice there's an issue with that name: ${nameError}. Please provide a valid name.`);
-        return;
+
+      const sanitizedData = sanitizeUserData();
+      
+      // Step 1: Register/create user if new customer
+      let userId = userData.user_id;
+      
+      console.log('Quote generation - checking user_id:', userId);
+      console.log('User type:', userData.user_type);
+      console.log('Full userData:', userData);
+      
+      if (!userId && userData.user_type === 'new_customer') {
+        console.log('Creating new user...');
+        
+        const [firstName, ...lastNameParts] = (sanitizedData.full_name || '').split(' ');
+        const lastName = lastNameParts.join(' ') || firstName;
+        
+        const userPayload: RegisterUserRequestSchema = {
+          email: sanitizedData.email,
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: sanitizedData.phone_number
+        };
+
+        const userResult = await registerUser(userPayload);
+        userId = userResult.user_id;
+        
+        // Update userData with user_id
+        setUserData(prev => ({ ...prev, user_id: userId }));
+        console.log('User created successfully:', userResult);
       }
-    }
-    
-    if (step.field === 'phone_number') {
-      const phoneError = validatePhoneNumber(storedValue);
-      if (phoneError) {
-        addAssistantMessage(`I notice there's an issue with that phone number: ${phoneError}. Please provide a valid phone number.`);
-        return;
+
+      if (!userId) {
+        console.error('No user ID found. UserData:', userData);
+        throw new Error(`User ID is required for quote generation. Current user_type: ${userData.user_type}, user_id: ${userId}`);
       }
-    }
-  }
 
-  // Update user data if step has a field
-  if (step?.field) {
-    const storedValue = isSelection ? value.value : messageContent;
-    setUserData((prev: any) => ({ ...prev, [step.field]: storedValue }));
-  }
+      // Step 2: Create property
+      console.log('Creating property...');
+      
+      const propertyPayload: PropertyCreateRequestSchema = {
+        user_id: userId,
+        street_address: sanitizedData.street_address,
+        city: sanitizedData.city,
+        state: sanitizedData.state,
+        zip_code: sanitizedData.zip_code,
+        property_type: sanitizedData.property_type || 'single_family',
+        construction_year: parseInt(sanitizedData.construction_year) || 2000,
+        home_value: parseInt(sanitizedData.home_value) || 300000,
+        square_footage: parseInt(sanitizedData.square_footage) || 1500,
+        construction_material: sanitizedData.construction_material || 'frame',
+        roof_type: sanitizedData.roof_type || 'composition_shingle',
+        foundation_type: sanitizedData.foundation_type || 'slab',
+        stories: parseInt(sanitizedData.stories) || 1,
+        bedrooms: parseInt(sanitizedData.bedrooms) || 3,
+        bathrooms: parseInt(sanitizedData.bathrooms) || 2,
+        garage: sanitizedData.garage === 'yes' || sanitizedData.garage === true,
+        pool: sanitizedData.pool === 'yes' || sanitizedData.pool === true
+      };
 
-  // Update step history before moving to next step
-  updateStepHistory(conversationStep);
+      const propertyResult = await createProperty(propertyPayload);
+      const propertyId = propertyResult.property.property_id;
+      console.log('Property created successfully:', propertyResult);
 
-  // CRITICAL FIX: Reset awaitingUser state before moving to next step
-  setAwaitingUser(false);
-  setIsProcessing(false);
-
-  setTimeout(() => {
-    // Find next valid step index
-    let nextStepIndex = conversationStep + 1;
-    while (nextStepIndex < conversationFlow.length) {
-      const nextStep = conversationFlow[nextStepIndex];
-      if (!nextStep.condition || nextStep.condition({...userData, [step?.field]: isSelection ? value.value : messageContent})) {
-        break;
+      // Step 3: Create quote
+      console.log('Generating quote...');
+      
+      // Calculate dwelling limit (typically 20% higher than home value)
+      const dwellingLimit = Math.round(propertyPayload.home_value * 1.2);
+      
+      // Determine deductible based on user preference or default
+      let deductible = 1000; // default
+      if (sanitizedData.deductible_preference) {
+        deductible = parseInt(sanitizedData.deductible_preference) || 1000;
       }
-      nextStepIndex++;
-    }
-    
-    setConversationStep(nextStepIndex);
-  }, 800);
-};
-  // Simplified quote generation placeholder (add your full implementation here)
-  const handleQuoteGeneration = (step: any) => {
-    setTimeout(() => {
-      addAssistantMessage("🎉 Your quote has been generated! Monthly premium: $125/month", step, { 
-        quote: { monthly: 125, annual: 1500 } 
+
+      // Calculate safety discount
+      let safetyDiscount = 0;
+      if (sanitizedData.security_system === 'yes') safetyDiscount += 10;
+      if (sanitizedData.smoke_detectors === 'yes') safetyDiscount += 5;
+
+      const quotePayload: QuoteCreateRequestSchema = {
+        property_id: propertyId,
+        user_id: userId,
+        dwelling_limit: dwellingLimit,
+        deductible: deductible,
+        safety_discount: safetyDiscount,
+        status: 'generated'
+      };
+
+      const quoteResult = await createQuote(quotePayload);
+      console.log('Quote generated successfully:', quoteResult);
+
+      // Step 4: Process and display the quote
+      setShowTyping(false);
+
+      // Extract quote data from API response
+      const quoteVersion = quoteResult.quote_version;
+      const totalPremiumAnnual = parseFloat(quoteResult.total_premium);
+      const monthlyPremium = Math.round(totalPremiumAnnual / 12);
+
+      // Build discounts array from API response
+      const discounts = quoteVersion.discounts || [];
+      
+      // Add safety discounts to display
+      if (sanitizedData.security_system === 'yes') {
+        discounts.push('Security System Discount (10%)');
+      }
+      if (sanitizedData.smoke_detectors === 'yes') {
+        discounts.push('Smoke Detector Discount (5%)');
+      }
+      if (sanitizedData.previous_claims === 'none') {
+        discounts.push('Claims-Free Discount');
+      }
+      if (discounts.length === 0) {
+        discounts.push('New Customer Welcome Discount');
+      }
+
+      const quoteData = {
+        monthly: monthlyPremium,
+        annual: totalPremiumAnnual,
+        dwelling_limit: dwellingLimit,
+        discounts: discounts,
+        quote_id: quoteResult.quote_id,
+        version_id: quoteResult.version_id,
+        base_premium: parseFloat(quoteVersion.base_premium),
+        taxes_and_fees: parseFloat(quoteVersion.taxes_and_fees),
+        deductible: deductible
+      };
+
+      // Add the QuoteResult message with quote data
+      // The MessageList will detect isQuoteResult and render the QuoteResult component
+      addAssistantMessage("", step, { 
+        quote: quoteData,
+        isQuoteResult: true,
+        quoteId: quoteResult.quote_id
       });
+      
       setShowFinalOptions(true);
       setAwaitingUser(true);
       setIsProcessing(false);
-    }, 2000);
+
+    } catch (error) {
+      console.error('Quote generation failed:', error);
+      setShowTyping(false);
+      setIsProcessing(false);
+      
+      let errorMessage = "I apologize, but I encountered an issue while generating your quote. ";
+      
+      if (error instanceof Error) {
+        // Handle specific API errors
+        if (error.message.includes('validation')) {
+          errorMessage += "Please check that all your information is correct and try again.";
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage += "There seems to be a connection issue. Please try again in a moment.";
+        } else {
+          errorMessage += "Please try again or contact our support team for assistance.";
+        }
+      } else {
+        errorMessage += "Please try again or contact our support team if the problem persists.";
+      }
+      
+      errorMessage += "\n\n📞 Support: 1-800-TAKAFUL\n💬 Live chat available 24/7";
+      
+      addAssistantMessage(errorMessage);
+      setAwaitingUser(true);
+    }
   };
 
   const handleFinalAction = (action: string) => {

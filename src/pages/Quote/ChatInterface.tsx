@@ -44,7 +44,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const lastAssistantMessage = messages.slice().reverse().find(msg => msg.type === 'assistant');
   const messageStep = lastAssistantMessage?.step;
   
-  // Determine which step to use for input - prioritize message step if it has options
+  // Debug logging
+  console.log('ChatInterface Debug:', {
+    lastAssistantMessage: lastAssistantMessage?.content,
+    messageStep: messageStep,
+    hasOptions: messageStep?.options?.length > 0,
+    awaitingUser,
+    showFinalOptions
+  });
+  
+  // Use messageStep if it has options and we're awaiting user, otherwise use currentStep
   const stepForInput = (messageStep?.options && awaitingUser) ? messageStep : currentStep;
 
   // Create wrapper functions that match the expected signatures
@@ -85,6 +94,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
       
       <div className="border-t border-gray-100 bg-white p-4">
+        {/* Show ChatInput for all awaiting user scenarios */}
         {awaitingUser && (
           <ChatInput
             inputType={
@@ -92,13 +102,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               stepForInput?.type === 'loading' ? 'loading' :
               stepForInput?.options ? 'options' : 'input'
             }
-            currentStep={stepForInput}  // Pass the step that should be used for input
+            currentStep={stepForInput}
             showFinalOptions={showFinalOptions}
             onUserInput={handleUserInput}
             onOptionSelect={handleOptionSelect}
             onFinalAction={onFinalAction}
             userData={userData}
-            // Go back functionality props
             conversationStep={conversationStep}
             stepHistory={stepHistory}
             onGoBack={onGoBack}
