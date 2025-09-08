@@ -10,6 +10,7 @@ export const conversationFlow = [
     ],
     field: 'user_type'
   },
+  // EXISTING CUSTOMER PATH
   {
     id: 'existing_login',
     sender: 'assistant',
@@ -18,8 +19,72 @@ export const conversationFlow = [
     inputType: 'email',
     placeholder: 'your.email@example.com',
     field: 'email',
-    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+    condition: (userData) => userData.user_type === 'existing_customer'
   },
+  {
+    id: 'email_verification_check',
+    sender: 'assistant',
+    message: "Let me verify this email address...",
+    type: 'loading',
+    condition: (userData) => userData.user_type === 'existing_customer' && userData.email && !userData.email_verified && !userData.email_not_found
+  },
+  {
+    id: 'email_not_found',
+    sender: 'assistant',
+    type: 'options',
+    message: "❌ I couldn't find an account with that email address.\n\n" +
+             "This could mean:\n" +
+             "• You might have used a different email when you signed up\n" +
+             "• You may be a new customer\n" +
+             "• There might be a typo in the email address\n\n" +
+             "What would you like to do?",
+    condition: (userData) => userData.email_not_found === true,
+    options: [
+      {
+        text: 'Try a different email address',
+        value: 'retry_email',
+        icon: '📧',
+        desc: 'I might have used a different email when I signed up'
+      },
+      {
+        text: 'Continue as a new customer',
+        value: 'continue_as_new',
+        icon: '🆕',
+        desc: 'I\'m new to Takaful and want to get a quote'
+      },
+      {
+        text: 'Contact support for help',
+        value: 'contact_support',
+        icon: '💬',
+        desc: 'I need help finding my account'
+      }
+    ]
+  },
+  {
+    id: 'send_otp',
+    sender: 'assistant',
+    message: "Great! I've sent a verification code to your email address.\n\nPlease check your inbox and enter the 6-digit code:",
+    type: 'input',
+    inputType: 'text',
+    placeholder: '123456',
+    field: 'otp_code',
+    validation: (value) => /^\d{6}$/.test(value.trim()),
+    condition: (userData) => userData.user_type === 'existing_customer' && userData.email_verified === true && !userData.otp_verified
+  },
+  {
+    id: 'existing_welcome_back',
+    sender: 'assistant',
+    message: (name) => `Welcome back${name ? `, ${name}` : ''}! 🎉\n\nI can see your account details. Would you like to get a quote for a new property or update coverage for an existing one?`,
+    type: 'options',
+    options: [
+      { text: "New Property Quote", value: 'new_property', icon: '🏠', desc: 'Get quote for a different property' },
+      { text: "Update Existing Policy", value: 'update_policy', icon: '📝', desc: 'Modify current coverage' }
+    ],
+    field: 'quote_type',
+    condition: (userData) => userData.user_type === 'existing_customer' && userData.otp_verified
+  },
+  // NEW CUSTOMER PATH
   {
     id: 'new_customer_welcome',
     sender: 'assistant',
@@ -28,7 +93,8 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: 'Enter your full name',
     field: 'full_name',
-    validation: (value) => value.trim().length >= 2
+    validation: (value) => value.trim().length >= 2,
+    condition: (userData) => userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new'
   },
   {
     id: 'new_customer_email',
@@ -38,7 +104,8 @@ export const conversationFlow = [
     inputType: 'email',
     placeholder: 'your.email@example.com',
     field: 'email',
-    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+    condition: (userData) => userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new'
   },
   {
     id: 'phone_number',
@@ -48,8 +115,10 @@ export const conversationFlow = [
     inputType: 'tel',
     placeholder: '+1 (555) 123-4567',
     field: 'phone_number',
-    validation: (value) => value.replace(/\D/g, '').length >= 10
+    validation: (value) => value.replace(/\D/g, '').length >= 10,
+    condition: (userData) => (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
   },
+  // COMMON PROPERTY DETAILS PATH (both customer types converge here)
   {
     id: 'street_address',
     sender: 'assistant',
@@ -304,6 +373,9 @@ export const conversationFlow = [
 export const progressTexts = [
   'Getting Started',
   'Account Check',
+  'Email Verification',
+  'Login Verification',
+  'Account Access',
   'Personal Info',
   'Contact Details',
   'Phone Number',

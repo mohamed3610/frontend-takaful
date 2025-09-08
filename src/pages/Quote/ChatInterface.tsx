@@ -15,6 +15,10 @@ interface ChatInterfaceProps {
   progressTexts: string[];
   conversationFlow: any[];
   showFinalOptions?: boolean;
+  canSendMessage?: boolean;
+  validationErrors?: string[];
+  onGoBack?: (stepIndex: number) => void;
+  stepHistory?: number[];
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -27,36 +31,86 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onFinalAction,
   progressTexts,
   conversationFlow,
-  showFinalOptions
+  showFinalOptions = false,
+  canSendMessage = true,
+  validationErrors = [],
+  onGoBack,
+  stepHistory = []
 }) => {
+  // Get current step from flow
+  const currentStep = conversationFlow[conversationStep];
+  
+  // Get the last assistant message to check if it has step info with options
+  const lastAssistantMessage = messages.slice().reverse().find(msg => msg.type === 'assistant');
+  const messageStep = lastAssistantMessage?.step;
+  
+  // Determine which step to use for input - prioritize message step if it has options
+  const stepForInput = (messageStep?.options && awaitingUser) ? messageStep : currentStep;
+
   // Create wrapper functions that match the expected signatures
   const handleUserInput = (value: { text: string; sender: "user"; }) => {
-    onUserResponse(value, conversationFlow[conversationStep]);
+    if (!canSendMessage) return;
+    onUserResponse(value, stepForInput);
   };
 
   const handleOptionSelect = (selection: { text: string; value: string; }) => {
-    onUserResponse(selection, conversationFlow[conversationStep]);
+    if (!canSendMessage) return;
+    onUserResponse(selection, stepForInput);
   };
 
   return (
     <div className="relative flex flex-col h-[70vh] max-h-[70vh] overflow-hidden rounded-[25px] shadow-lg bg-[var(--cream)] takaful-quote">
       <div className="absolute top-0 left-0 right-0 h-[5px] bg-[linear-gradient(90deg,var(--gold),var(--emerald),var(--mint))]" />
+      
       <ProgressIndicator currentStep={conversationStep} progressTexts={progressTexts} />
+      
       <ChatHeader showTyping={showTyping} />
+      
       <div className="flex-1 min-h-0 overflow-hidden">
         <MessageList messages={messages} />
       </div>
+      
+      {/* Validation Errors Display */}
+      {validationErrors.length > 0 && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-3 mx-4 mb-2">
+          <div className="text-sm text-red-700">
+            <strong>Please fix the following issues:</strong>
+            <ul className="mt-1 list-disc list-inside">
+              {validationErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+      
       <div className="border-t border-gray-100 bg-white p-4">
         {awaitingUser && (
           <ChatInput
-            inputType={showFinalOptions ? 'options' : (conversationFlow[conversationStep]?.options ? 'options' : 'input')}
-            currentStep={conversationFlow[conversationStep]}
-            showFinalOptions={Boolean(showFinalOptions)}
+            inputType={
+              showFinalOptions ? 'options' :
+              stepForInput?.type === 'loading' ? 'loading' :
+              stepForInput?.options ? 'options' : 'input'
+            }
+            currentStep={stepForInput}  // Pass the step that should be used for input
+            showFinalOptions={showFinalOptions}
             onUserInput={handleUserInput}
             onOptionSelect={handleOptionSelect}
             onFinalAction={onFinalAction}
             userData={userData}
+            // Go back functionality props
+            conversationStep={conversationStep}
+            stepHistory={stepHistory}
+            onGoBack={onGoBack}
+            conversationFlow={conversationFlow}
           />
+        )}
+        
+        {/* Loading state indicator */}
+        {!awaitingUser && !showFinalOptions && (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-gray-500 text-sm">Processing...</div>
+          </div>
         )}
       </div>
     </div>
