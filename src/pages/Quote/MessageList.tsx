@@ -19,12 +19,36 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
     }
   }, [messages]);
 
+  // Organized Tailwind class groups
+  const containerClasses = [
+    // Layout & Structure
+    "h-full overflow-y-auto overflow-x-hidden scroll-smooth",
+    // Responsive spacing
+    "px-2 sm:px-4 md:px-6",
+    "py-2 sm:py-3 md:py-4 lg:py-6",
+    "space-y-2 sm:space-y-3 md:space-y-4",
+    // Scrollbar styling
+    "scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent",
+    "hover:scrollbar-thumb-gray-400"
+  ].join(" ");
+
+  const bottomSpacerClasses = [
+    "h-1 flex-shrink-0"
+  ].join(" ");
+
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto p-6 space-y-2 scrollbar-thin">
+    <div 
+      ref={containerRef} 
+      className={containerClasses}
+      style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#d1d5db transparent'
+      }}
+    >
       {messages.map(msg => (
         <Message key={msg.id} message={msg} />
       ))}
-      <div ref={bottomRef} />
+      <div ref={bottomRef} className={bottomSpacerClasses} />
     </div>
   );
 };
