@@ -36,8 +36,7 @@ const QuoteApplication = () => {
   useEffect(() => {
     if ((import.meta as any).env?.DEV) {
       console.log('Current userData:', userData);
-      console.log('Current step:', conversationStep);
-      console.log('API Base URL:', (import.meta as any).env?.VITE_API_BASE_URL);
+   
     }
   }, [userData, conversationStep]);
 
@@ -121,14 +120,14 @@ const QuoteApplication = () => {
 
   // MOCK ONLY: Email verification function
   const verifyEmailExists = async (email: string): Promise<boolean> => {
-    console.log('MOCK: Checking email exists:', email);
+
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     // For testing: only these emails exist in the system
     const existingEmails = ['test@example.com', 'ahmed@takaful.com', 'user@test.com'];
     const exists = existingEmails.includes(email.toLowerCase());
-    console.log('MOCK: Email exists result:', exists);
+  
     return exists;
   };
 
@@ -232,14 +231,13 @@ const QuoteApplication = () => {
   // MOCK ONLY: Email verification handler
   const handleEmailVerification = async () => {
     try {
-      console.log("=== MOCK EMAIL VERIFICATION START ===");
-      console.log("Checking email:", userData.email);
+   
 
       // Show verification in progress message
       addAssistantMessage("🔍 Checking if this email exists in our system...");
 
       const emailExists = await verifyEmailExists(userData.email);
-      console.log("MOCK: Email exists result:", emailExists);
+ 
 
       // Clear typing and processing states first
       setShowTyping(false);
@@ -263,7 +261,7 @@ const QuoteApplication = () => {
             (step) => step.id === "send_otp"
           );
           if (otpStepIndex !== -1) {
-            console.log("Navigating to OTP step:", otpStepIndex);
+          
             setConversationStep(otpStepIndex);
             setTimeout(() => {
               setIsProcessing(false);
@@ -292,7 +290,7 @@ const QuoteApplication = () => {
               ? step.message(getFriendlyName())
               : step.message;
 
-          console.log("Email not found step found:", step);
+    
 
           setTimeout(() => {
             addAssistantMessage(messageText || "I couldn't find an account with that email address.", step);
@@ -336,12 +334,12 @@ const QuoteApplication = () => {
   // Enhanced processNextStep function with better user type handling
   const processNextStep = () => {
     if (awaitingUser) {
-      console.log("Already awaiting user input, skipping processNextStep");
+   
       return;
     }
 
     if (isProcessing) {
-      console.log("Already processing, skipping processNextStep");
+  
       return;
     }
 
@@ -350,32 +348,29 @@ const QuoteApplication = () => {
     let nextStepIndex = conversationStep;
     let step;
 
-    console.log("=== PROCESSING NEXT STEP ===");
-    console.log("Current step index:", nextStepIndex);
-    console.log("Current userData:", userData);
-    console.log("User type:", userData.user_type);
+  
 
     step = conversationFlow[nextStepIndex];
 
     // Check if step exists
     if (!step) {
       console.error("No step found at index:", nextStepIndex);
-      console.log("Total conversation flow length:", conversationFlow.length);
+   
       addAssistantMessage("I encountered an issue with the conversation flow. Please contact support.");
       return;
     }
 
-    console.log("Found step:", step.id, "type:", step.type);
+  
 
     // FIXED: Enhanced condition checking that prevents backward navigation issues
     do {
       step = conversationFlow[nextStepIndex];
       if (!step) {
-        console.log("No more steps found");
+      
         return;
       }
 
-      console.log("Checking step:", step.id, "condition:", !!step.condition);
+  
 
       // CRITICAL FIX: Pass updated userData including user_type to condition check
       const currentUserData = { ...userData };
@@ -385,7 +380,7 @@ const QuoteApplication = () => {
         const conditionResult = step.condition(currentUserData);
         
         if (!conditionResult) {
-          console.log("Step condition failed for:", step.id, "with userData:", currentUserData);
+      
           nextStepIndex++;
           continue;
         }
@@ -399,21 +394,21 @@ const QuoteApplication = () => {
           currentUserData.user_type === 'existing_customer' && 
           currentUserData.otp_verified && 
           nextStepIndex < conversationStep) { // Only skip if we're looking at a previous step
-        console.log(`Skipping completed auth step ${step.id} for authenticated existing customer`);
+     
         nextStepIndex++;
         continue;
       }
 
-      console.log("Step condition passed for:", step.id);
+   
       break;
     } while (nextStepIndex < conversationFlow.length);
 
     if (!step) {
-      console.log("No valid step found after condition checking");
+   
       return;
     }
 
-    console.log("Processing step:", step.id, "type:", step.type);
+  
     setIsProcessing(true);
     setShowTyping(true);
     setAwaitingUser(false);
@@ -426,7 +421,7 @@ const QuoteApplication = () => {
 
       // Handle different step types
       if (step.type === "options" && step.options?.length > 0) {
-        console.log("Options step detected:", step.id, "options:", step.options);
+  
         
         const displayMessage = messageText || "Please choose an option:";
         addAssistantMessage(displayMessage, step);
@@ -441,11 +436,11 @@ const QuoteApplication = () => {
           if (messageText) addAssistantMessage(messageText, step);
           handleQuoteGeneration(step);
         } else if (step.id === "email_verification_check") {
-          console.log("Starting MOCK email verification step");
+       
           if (messageText) addAssistantMessage(messageText, step);
           handleEmailVerification();
         } else {
-          console.log("Other loading step:", step.id);
+    
           if (messageText) addAssistantMessage(messageText, step);
           setAwaitingUser(true);
           setIsProcessing(false);
@@ -453,13 +448,13 @@ const QuoteApplication = () => {
 
       } else if (step.id === "send_otp") {
         // Special handling for OTP step
-        console.log("Starting MOCK OTP step");
+
         if (messageText) addAssistantMessage(messageText, step);
         handleOTPSending();
 
       } else {
         // Regular input/text steps
-        console.log("Regular step, waiting for user:", step.id);
+        
         if (messageText) addAssistantMessage(messageText, step);
         setAwaitingUser(true);
         setIsProcessing(false);
@@ -471,12 +466,12 @@ const QuoteApplication = () => {
   const handleOTPSending = async () => {
     // Check if OTP step was already handled manually to prevent duplicates
     if (userData.otp_step_handled) {
-      console.log('MOCK: OTP step already handled manually, skipping automatic OTP sending');
+   
       return;
     }
     
-    // Static simulation for testing OTP flow only
-    console.log('MOCK: Simulating OTP send to:', userData.email);
+ 
+ 
     
     // Show a static message that OTP was "sent"
     setTimeout(() => {
@@ -488,7 +483,7 @@ const QuoteApplication = () => {
 
   // MOCK ONLY: OTP verification
   const verifyOTP = async (otpCode: string) => {
-    console.log('MOCK: Verifying OTP:', otpCode);
+ 
     setIsProcessing(true);
     setShowTyping(true);
     
@@ -499,7 +494,7 @@ const QuoteApplication = () => {
       setShowTyping(false);
       
       if (isValidOTP) {
-        console.log('MOCK: OTP verified successfully');
+      
         
         // Generate a proper UUID format for existing customer mock data
         const generateMockUUID = () => {
@@ -527,7 +522,7 @@ const QuoteApplication = () => {
         setTimeout(() => {
           const welcomeBackStepIndex = conversationFlow.findIndex(step => step.id === 'existing_welcome_back');
           if (welcomeBackStepIndex !== -1) {
-            console.log('Navigating to existing_welcome_back step:', welcomeBackStepIndex);
+         
             setConversationStep(welcomeBackStepIndex);
             setIsProcessing(false);
             setAwaitingUser(false);
@@ -552,7 +547,7 @@ const QuoteApplication = () => {
           }
         }, 800);
       } else {
-        console.log('MOCK: OTP verification failed');
+     
         addAssistantMessage("The verification code doesn't match. Please use: 123456 for testing.");
         setAwaitingUser(true);
         setIsProcessing(false);
@@ -562,10 +557,7 @@ const QuoteApplication = () => {
 
   // Enhanced go back functionality with proper state management
   const goBackToStep = (targetStepIndex: number) => {
-    console.log('=== GO BACK FUNCTIONALITY ===');
-    console.log('Target step index:', targetStepIndex);
-    console.log('Current step:', conversationStep);
-    console.log('Current userData before going back:', userData);
+
     
     if (targetStepIndex < 0 || targetStepIndex >= conversationFlow.length) {
       console.error('Invalid target step index:', targetStepIndex);
@@ -578,7 +570,7 @@ const QuoteApplication = () => {
       return;
     }
 
-    console.log('Going back to step:', targetStep.id);
+   
 
     // Reset processing states
     setIsProcessing(false);
@@ -595,7 +587,7 @@ const QuoteApplication = () => {
     for (let i = targetStepIndex + 1; i < conversationFlow.length; i++) {
       const step = conversationFlow[i];
       if (step.field && updatedUserData[step.field] !== undefined) {
-        console.log('Clearing field from step', i, ':', step.field);
+       
         delete updatedUserData[step.field];
       }
     }
@@ -619,7 +611,7 @@ const QuoteApplication = () => {
       );
       
       if (fieldStepIndex > targetStepIndex && updatedUserData[field] !== undefined) {
-        console.log('Resetting field:', field);
+
         delete updatedUserData[field];
       }
     });
@@ -819,7 +811,7 @@ const QuoteApplication = () => {
       setIsProcessing(true);
       setShowTyping(true);
       
-      console.log("=== REAL API: Starting quote generation ===");
+   
       
       // Add initial loading message
       addAssistantMessage("🔄 Generating your Shariah-compliant quote...");
@@ -838,11 +830,10 @@ const QuoteApplication = () => {
       // Step 1: Register/create user if new customer - REAL API CALL
       let userId = userData.user_id;
       
-      console.log('REAL API: Quote generation - checking user_id:', userId);
-      console.log('User type:', userData.user_type);
+
       
       if (!userId && userData.user_type === 'new_customer') {
-        console.log('REAL API: Creating new user...');
+ 
         
         const [firstName, ...lastNameParts] = (sanitizedData.full_name || '').split(' ');
         const lastName = lastNameParts.join(' ') || firstName;
@@ -854,14 +845,13 @@ const QuoteApplication = () => {
           phone_number: sanitizedData.phone_number
         };
 
-        console.log('REAL API: User payload:', userPayload);
         
         const userResult = await registerUser(userPayload);
         userId = userResult.user_id;
         
         // Update userData with user_id
         setUserData(prev => ({ ...prev, user_id: userId }));
-        console.log('REAL API: User created successfully:', userResult);
+       
       }
 
       if (!userId) {
@@ -869,8 +859,7 @@ const QuoteApplication = () => {
         throw new Error(`User ID is required for quote generation. Current user_type: ${userData.user_type}, user_id: ${userId}`);
       }
 
-      // Step 2: Create property with proper schema compliance - REAL API CALL
-      console.log('REAL API: Creating property...');
+      // Step 2: Create property with proper schema compliance - 
       
       const propertyPayload: PropertyCreateRequestSchema = {
         user_id: userId,
@@ -892,14 +881,14 @@ const QuoteApplication = () => {
         pool: sanitizedData.pool === 'yes' || sanitizedData.pool === true || false
       };
 
-      console.log('REAL API: Property payload:', propertyPayload);
+      
       
       const propertyResult = await createProperty(propertyPayload);
       const propertyId = propertyResult.property.property_id;
-      console.log('REAL API: Property created successfully:', propertyResult);
 
-      // Step 3: Create quote with proper schema compliance - REAL API CALL
-      console.log('REAL API: Generating quote...');
+
+      // Step 3: Create quote with proper schema compliance - 
+ 
       
       // Calculate dwelling limit (typically 20% higher than home value)
       const dwellingLimit = Math.round((parseInt(sanitizedData.home_value) || 300000) * 1.2);
@@ -924,10 +913,10 @@ const QuoteApplication = () => {
         status: 'generated' as QuoteStatus
       };
 
-      console.log('REAL API: Quote payload:', quotePayload);
+     
       
       const quoteResult = await createQuote(quotePayload);
-      console.log('REAL API: Quote generated successfully:', quoteResult);
+    
 
       // Step 4: Process and display the quote
       setShowTyping(false);
@@ -1082,15 +1071,11 @@ const QuoteApplication = () => {
       (window as any).debugQuote = () => {
         console.log('=== QUOTE GENERATION DEBUG ===');
         console.log('User Data:', userData);
-        console.log('Sanitized Data:', sanitizeUserData());
-        console.log('Validation Errors:', validateUserData());
-        console.log('Current Step:', conversationStep);
-        console.log('API Base URL:', (import.meta as any).env?.VITE_API_BASE_URL);
-        console.log('Environment:', (import.meta as any).env?.DEV ? 'Development' : 'Production');
+   
       };
 
       (window as any).testApi = async () => {
-        console.log('=== TESTING REAL API ENDPOINTS ===');
+ 
         
         try {
           // Test user registration
@@ -1101,9 +1086,9 @@ const QuoteApplication = () => {
             phone_number: '+1234567890'
           };
           
-          console.log('REAL API: Testing user registration...');
+      
           const userResult = await registerUser(testUserPayload);
-          console.log('REAL API: User registration success:', userResult);
+       
           
           // Test property creation
           const testPropertyPayload: PropertyCreateRequestSchema = {
@@ -1126,9 +1111,9 @@ const QuoteApplication = () => {
             pool: false
           };
           
-          console.log('REAL API: Testing property creation...');
+         
           const propertyResult = await createProperty(testPropertyPayload);
-          console.log('REAL API: Property creation success:', propertyResult);
+       
           
           // Test quote creation
           const testQuotePayload: QuoteCreateRequestSchema = {
@@ -1140,16 +1125,16 @@ const QuoteApplication = () => {
             status: 'draft'
           };
           
-          console.log('REAL API: Testing quote creation...');
+       
           const quoteResult = await createQuote(testQuotePayload);
-          console.log('REAL API: Quote creation success:', quoteResult);
+         
           
         } catch (error) {
           console.error('REAL API: Test Failed:', error);
         }
       };
 
-      console.log('Debug functions available: window.debugQuote() and window.testApi()');
+     
     }
   }, []);
 
