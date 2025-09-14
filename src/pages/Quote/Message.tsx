@@ -8,30 +8,27 @@ interface MessageProps {
     type: 'user' | 'assistant';
     step?: any;
     quote?: any;
+    isQuoteResult?: boolean;
   };
 }
 
 const Message: React.FC<MessageProps> = ({ message }) => {
   const renderMessageContent = () => {
-    // Handle quote result display - check both content and quote existence
-    if ((message.content === 'quote_result' || message.content === 'quote') && message.quote) {
+    // Handle quote result display using the isQuoteResult flag
+    if (message.isQuoteResult && message.quote) {
       return <QuoteResult quote={message.quote} />;
     }
 
     // Handle case where quote was expected but missing
-    if ((message.content === 'quote_result' || message.content === 'quote') && !message.quote) {
+    if (message.isQuoteResult && !message.quote) {
       console.warn('Quote content expected but quote data missing:', message);
       return <span className="text-red-500">Quote data unavailable</span>;
     }
 
-    // Add safety check for message.content - but exclude quote-related content
+    // Don't render options in message - they'll be handled by ChatInput
+    // Just show the message text
     if (!message.content || message.content.trim() === '') {
       return <span className="text-gray-500">No content available</span>;
-    }
-
-    // Don't render quote_result or quote as regular text if we reach here
-    if (message.content === 'quote_result' || message.content === 'quote') {
-      return <span className="text-blue-500">Generating quote...</span>;
     }
 
     // Handle regular text content with line breaks
