@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import MainLayout from './MainLayout';
-import ChatInterface from './ChatInterface';
-import WelcomeScreen from './WelcomeScreen';
+import MainLayout from '../../components/layouts/MainLayout';
+import ChatInterface from '../../components/chat/ChatInterface';
+import WelcomeScreen from '../../components/chat/WelcomeScreen';
 import { conversationFlow, progressTexts } from '../../data/ConversationFlow';
 import "../../styles/quote.css";
 import { registerUser } from '../../api/auth';
