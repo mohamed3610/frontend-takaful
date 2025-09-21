@@ -10,7 +10,6 @@ export const conversationFlow = [
     ],
     field: 'user_type'
   },
-  // EXISTING CUSTOMER PATH
   {
     id: 'existing_login',
     sender: 'assistant',
@@ -19,72 +18,8 @@ export const conversationFlow = [
     inputType: 'email',
     placeholder: 'your.email@example.com',
     field: 'email',
-    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-    condition: (userData) => userData.user_type === 'existing_customer'
+    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
   },
-  {
-    id: 'email_verification_check',
-    sender: 'assistant',
-    message: "Let me verify this email address...",
-    type: 'loading',
-    condition: (userData) => userData.user_type === 'existing_customer' && userData.email && !userData.email_verified && !userData.email_not_found
-  },
-  {
-    id: 'email_not_found',
-    sender: 'assistant',
-    type: 'options',
-    message: "❌ I couldn't find an account with that email address.\n\n" +
-             "This could mean:\n" +
-             "• You might have used a different email when you signed up\n" +
-             "• You may be a new customer\n" +
-             "• There might be a typo in the email address\n\n" +
-             "What would you like to do?",
-    condition: (userData) => userData.email_not_found === true,
-    options: [
-      {
-        text: 'Try a different email address',
-        value: 'retry_email',
-        icon: '📧',
-        desc: 'I might have used a different email when I signed up'
-      },
-      {
-        text: 'Continue as a new customer',
-        value: 'continue_as_new',
-        icon: '🆕',
-        desc: 'I\'m new to Takaful and want to get a quote'
-      },
-      {
-        text: 'Contact support for help',
-        value: 'contact_support',
-        icon: '💬',
-        desc: 'I need help finding my account'
-      }
-    ]
-  },
-  {
-    id: 'send_otp',
-    sender: 'assistant',
-    message: "Great! I've sent a verification code to your email address.\n\nPlease check your inbox and enter the 6-digit code:",
-    type: 'input',
-    inputType: 'text',
-    placeholder: '123456',
-    field: 'otp_code',
-    validation: (value) => /^\d{6}$/.test(value.trim()),
-    condition: (userData) => userData.user_type === 'existing_customer' && userData.email_verified === true && !userData.otp_verified
-  },
-  {
-    id: 'existing_welcome_back',
-    sender: 'assistant',
-    message: (name) => `Welcome back${name ? `, ${name}` : ''}! 🎉\n\nI can see your account details. Would you like to get a quote for a new property or update coverage for an existing one?`,
-    type: 'options',
-    options: [
-      { text: "New Property Quote", value: 'new_property', icon: '🏠', desc: 'Get quote for a different property' },
-      { text: "Update Existing Policy", value: 'update_policy', icon: '📝', desc: 'Modify current coverage' }
-    ],
-    field: 'quote_type',
-    condition: (userData) => userData.user_type === 'existing_customer' && userData.otp_verified
-  },
-  // NEW CUSTOMER PATH
   {
     id: 'new_customer_welcome',
     sender: 'assistant',
@@ -93,8 +28,7 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: 'Enter your full name',
     field: 'full_name',
-    validation: (value) => value.trim().length >= 2,
-    condition: (userData) => userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new'
+    validation: (value) => value.trim().length >= 2
   },
   {
     id: 'new_customer_email',
@@ -104,8 +38,7 @@ export const conversationFlow = [
     inputType: 'email',
     placeholder: 'your.email@example.com',
     field: 'email',
-    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-    condition: (userData) => userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new'
+    validation: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
   },
   {
     id: 'phone_number',
@@ -115,13 +48,8 @@ export const conversationFlow = [
     inputType: 'tel',
     placeholder: '+1 (555) 123-4567',
     field: 'phone_number',
-    validation: (value) => value.replace(/\D/g, '').length >= 10,
-    // FIXED: Add condition to only show for new customers OR existing customers getting new property quote
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => value.replace(/\D/g, '').length >= 10
   },
-  // COMMON PROPERTY DETAILS PATH (both customer types converge here)
   {
     id: 'street_address',
     sender: 'assistant',
@@ -130,11 +58,7 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: '123 Main Street',
     field: 'street_address',
-    validation: (value) => value.trim().length >= 5,
-    // FIXED: Add condition to show for both new customers and existing customers wanting new property quote
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => value.trim().length >= 5
   },
   {
     id: 'city',
@@ -144,11 +68,7 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: 'Enter city name',
     field: 'city',
-    validation: (value) => value.trim().length >= 2,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => value.trim().length >= 2
   },
   {
     id: 'state',
@@ -158,11 +78,7 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: 'CA, NY, TX, etc.',
     field: 'state',
-    validation: (value) => value.trim().length >= 2,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => value.trim().length >= 2
   },
   {
     id: 'zip_code',
@@ -172,11 +88,7 @@ export const conversationFlow = [
     inputType: 'text',
     placeholder: '12345 or 12345-6789',
     field: 'zip_code',
-    validation: (value) => /^\d{5}(-\d{4})?$/.test(value.trim()),
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => /^\d{5}(-\d{4})?$/.test(value.trim())
   },
   {
     id: 'property_type',
@@ -185,15 +97,11 @@ export const conversationFlow = [
     type: 'options',
     options: [
       { text: "Single Family Home", value: 'single_family', icon: '🏠', desc: 'Detached single-family house' },
-      { text: "Apartment/Condo", value: 'condo', icon: '🏢', desc: 'Unit in a building or complex' },
+      { text: "Apartment/Condo", value: 'apartment', icon: '🏢', desc: 'Unit in a building or complex' },
       { text: "Townhouse", value: 'townhouse', icon: '🏘️', desc: 'Attached home in a row' },
       { text: "Duplex", value: 'duplex', icon: '🏡', desc: 'Two-unit residential building' }
     ],
-    field: 'property_type',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'property_type'
   },
   {
     id: 'construction_year',
@@ -206,11 +114,7 @@ export const conversationFlow = [
     validation: (value) => {
       const year = parseInt(value);
       return year >= 1800 && year <= new Date().getFullYear() + 1;
-    },
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    }
   },
   {
     id: 'home_value',
@@ -220,11 +124,7 @@ export const conversationFlow = [
     inputType: 'number',
     placeholder: '350000',
     field: 'home_value',
-    validation: (value) => parseInt(value) >= 50000,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => parseInt(value) >= 50000
   },
   {
     id: 'square_footage',
@@ -234,11 +134,7 @@ export const conversationFlow = [
     inputType: 'number',
     placeholder: '2000',
     field: 'square_footage',
-    validation: (value) => parseInt(value) >= 400,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => parseInt(value) >= 400
   },
   {
     id: 'construction_material',
@@ -249,13 +145,9 @@ export const conversationFlow = [
       { text: "Frame (Wood)", value: 'frame', icon: '🌲', desc: 'Traditional wood frame construction' },
       { text: "Masonry (Brick/Stone)", value: 'masonry', icon: '🧱', desc: 'Brick, stone, or block construction' },
       { text: "Steel", value: 'steel', icon: '🏗️', desc: 'Steel frame construction' },
-      { text: "Mixed/Other", value: 'other', icon: '🏠', desc: 'Combination or other materials' }
+      { text: "Mixed/Other", value: 'mixed', icon: '🏠', desc: 'Combination or other materials' }
     ],
-    field: 'construction_material',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'construction_material'
   },
   {
     id: 'roof_type',
@@ -269,11 +161,7 @@ export const conversationFlow = [
       { text: "Slate", value: 'slate', icon: '🪨', desc: 'Natural slate roofing' },
       { text: "Other", value: 'other', icon: '🏠', desc: 'Different roofing material' }
     ],
-    field: 'roof_type',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'roof_type'
   },
   {
     id: 'foundation_type',
@@ -284,13 +172,9 @@ export const conversationFlow = [
       { text: "Slab", value: 'slab', icon: '⬜', desc: 'Concrete slab foundation' },
       { text: "Crawl Space", value: 'crawl_space', icon: '🏠', desc: 'Raised foundation with crawl space' },
       { text: "Basement", value: 'basement', icon: '🏘️', desc: 'Full or partial basement' },
-      { text: "Pier/Post", value: 'pier_beam', icon: '🏗️', desc: 'Raised on piers or posts' }
+      { text: "Pier/Post", value: 'pier_post', icon: '🏗️', desc: 'Raised on piers or posts' }
     ],
-    field: 'foundation_type',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'foundation_type'
   },
   {
     id: 'stories',
@@ -302,11 +186,7 @@ export const conversationFlow = [
       { text: "2 Stories", value: '2', icon: '🏢', desc: 'Two-story home' },
       { text: "3+ Stories", value: '3', icon: '🏗️', desc: 'Three or more stories' }
     ],
-    field: 'stories',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'stories'
   },
   {
     id: 'bedrooms',
@@ -316,11 +196,7 @@ export const conversationFlow = [
     inputType: 'number',
     placeholder: '3',
     field: 'bedrooms',
-    validation: (value) => parseInt(value) >= 1 && parseInt(value) <= 20,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => parseInt(value) >= 1 && parseInt(value) <= 20
   },
   {
     id: 'bathrooms',
@@ -330,11 +206,7 @@ export const conversationFlow = [
     inputType: 'number',
     placeholder: '2',
     field: 'bathrooms',
-    validation: (value) => parseInt(value) >= 1 && parseInt(value) <= 20,
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    validation: (value) => parseInt(value) >= 1 && parseInt(value) <= 20
   },
   {
     id: 'garage',
@@ -342,15 +214,11 @@ export const conversationFlow = [
     message: "Does your home have a garage?",
     type: 'options',
     options: [
-      { text: "Yes, attached garage", value: 'yes', icon: '🚗', desc: 'Garage attached to house' },
-      { text: "Yes, detached garage", value: 'yes', icon: '🏠', desc: 'Separate garage building' },
-      { text: "No garage", value: 'no', icon: '🚫', desc: 'No garage on property' }
+      { text: "Yes, attached garage", value: 'attached', icon: '🚗', desc: 'Garage attached to house' },
+      { text: "Yes, detached garage", value: 'detached', icon: '🏠', desc: 'Separate garage building' },
+      { text: "No garage", value: 'none', icon: '🚫', desc: 'No garage on property' }
     ],
-    field: 'garage',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'garage'
   },
   {
     id: 'pool',
@@ -358,15 +226,11 @@ export const conversationFlow = [
     message: "Do you have a swimming pool on your property?",
     type: 'options',
     options: [
-      { text: "Yes, in-ground pool", value: 'yes', icon: '🏊‍♀️', desc: 'Permanent in-ground swimming pool' },
-      { text: "Yes, above-ground pool", value: 'yes', icon: '🏊‍♂️', desc: 'Above-ground pool' },
-      { text: "No pool", value: 'no', icon: '🚫', desc: 'No swimming pool' }
+      { text: "Yes, in-ground pool", value: 'inground', icon: '🏊‍♀️', desc: 'Permanent in-ground swimming pool' },
+      { text: "Yes, above-ground pool", value: 'aboveground', icon: '🏊‍♂️', desc: 'Above-ground pool' },
+      { text: "No pool", value: 'none', icon: '🚫', desc: 'No swimming pool' }
     ],
-    field: 'pool',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'pool'
   },
   {
     id: 'smoke_detectors',
@@ -374,15 +238,11 @@ export const conversationFlow = [
     message: "Great! Now let's talk about safety features. 🛡️\n\nDoes your home have working smoke detectors?",
     type: 'options',
     options: [
-      { text: "Yes, hardwired", value: 'yes', icon: '🔥', desc: 'Permanent hardwired smoke detectors' },
-      { text: "Yes, battery powered", value: 'yes', icon: '🔋', desc: 'Battery-powered smoke detectors' },
-      { text: "No", value: 'no', icon: '🚫', desc: 'No smoke detectors installed' }
+      { text: "Yes, hardwired", value: 'hardwired', icon: '🔥', desc: 'Permanent hardwired smoke detectors' },
+      { text: "Yes, battery powered", value: 'battery', icon: '🔋', desc: 'Battery-powered smoke detectors' },
+      { text: "No", value: 'none', icon: '🚫', desc: 'No smoke detectors installed' }
     ],
-    field: 'smoke_detectors',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'smoke_detectors'
   },
   {
     id: 'security_system',
@@ -390,15 +250,11 @@ export const conversationFlow = [
     message: "Do you have a security/alarm system?",
     type: 'options',
     options: [
-      { text: "Yes, monitored system", value: 'yes', icon: '🔒', desc: 'Professional monitoring service' },
-      { text: "Yes, self-monitored", value: 'yes', icon: '📱', desc: 'DIY/self-monitored system' },
-      { text: "No security system", value: 'no', icon: '🚫', desc: 'No alarm system installed' }
+      { text: "Yes, monitored system", value: 'monitored', icon: '🔒', desc: 'Professional monitoring service' },
+      { text: "Yes, self-monitored", value: 'self_monitored', icon: '📱', desc: 'DIY/self-monitored system' },
+      { text: "No security system", value: 'none', icon: '🚫', desc: 'No alarm system installed' }
     ],
-    field: 'security_system',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'security_system'
   },
   {
     id: 'previous_claims',
@@ -410,11 +266,7 @@ export const conversationFlow = [
       { text: "1-2 small claims", value: 'few', icon: '📋', desc: 'Minor claims under $5,000' },
       { text: "Multiple or large claims", value: 'many', icon: '📄', desc: 'Several claims or major damage' }
     ],
-    field: 'previous_claims',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'claims_history'
   },
   {
     id: 'coverage_preference',
@@ -426,11 +278,7 @@ export const conversationFlow = [
       { text: "Comprehensive Coverage", value: 'standard', icon: '🏠', desc: 'Full protection + weather events' },
       { text: "Premium Coverage", value: 'premium', icon: '💎', desc: 'Maximum protection + high-value items' }
     ],
-    field: 'coverage_preference',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'coverage_preference'
   },
   {
     id: 'deductible_preference',
@@ -443,30 +291,19 @@ export const conversationFlow = [
       { text: "$2,500 Deductible", value: '2500', icon: '💎', desc: 'Higher deductible, lower premium' },
       { text: "$5,000 Deductible", value: '5000', icon: '🏦', desc: 'Highest deductible, lowest premium' }
     ],
-    field: 'deductible_preference',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    field: 'deductible'
   },
   {
     id: 'generate_quote',
     sender: 'assistant',
     message: "Alhamdulillah! I have everything I need to calculate your personalized Shariah-compliant home insurance quote.\n\nLet me work on this for you...",
-    type: 'loading',
-    // FIXED: Add condition
-    condition: (userData) => 
-      (userData.user_type === 'new_customer' || userData.email_choice === 'continue_as_new') || 
-      (userData.user_type === 'existing_customer' && userData.quote_type === 'new_property')
+    type: 'loading'
   }
 ];
 
 export const progressTexts = [
   'Getting Started',
   'Account Check',
-  'Email Verification',
-  'Login Verification',
-  'Account Access',
   'Personal Info',
   'Contact Details',
   'Phone Number',
